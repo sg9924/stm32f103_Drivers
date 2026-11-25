@@ -83,7 +83,7 @@ void led_flash(uint8_t freq, uint16_t interval_ms)
     {
         led_toggle();
 
-        #if BOARD_INIT_SYSTICK
+        #if BOARD_INIT_SYSTICK && ENABLE_SYSTICK_DELAY
             Systick_delay(interval_ms);
         #else
             tim_delay_ms(interval_ms);
