@@ -66,6 +66,20 @@ TARGET   := final
 # application source folder
 APP_DIR  := app
 
+# ---- Application selection ---------------------------------------------
+#    Default is app/main.c. Override on the command line:
+APP     ?= main
+APP_SRC ?= $(if $(findstring /,$(APP)),$(APP),$(APP_DIR)/$(APP).c)
+APP_NAME := $(basename $(notdir $(APP_SRC)))
+
+# Stop with a message when the selected file does not exist.
+# Skipped for clean and list-apps so they still work with a bad APP value.
+ifeq ($(filter clean list-apps,$(MAKECMDGOALS)),)
+ifeq ($(wildcard $(APP_SRC)),)
+$(error Application source '$(APP_SRC)' not found. Run 'make list-apps')
+endif
+endif
+
 # ---- Library folders (submodules) ---------------------------------------
 BOARD    := stm32f103
 # flat, no (include, src) split
@@ -77,13 +91,15 @@ MCU_INC  := mcu/include
 MCU_SRC  := mcu/src
 UTIL_INC := util/include
 UTIL_SRC := util/src
+SENSOR_INC := Sensors/include
+SENSOR_SRC := Sensors/src
 
 # Folders with .c and .s files. wildcard does not search subfolders,
 # so list each src/ folder directly.
-SRC_DIRS := $(APP_DIR) $(MCU_SRC) $(UTIL_SRC) $(DEV_SRC) $(BSP)
+SRC_DIRS := $(MCU_SRC) $(UTIL_SRC) $(SENSOR_SRC) $(BSP)
 
 # Folders with .h files. BSP appears in both lists because it is flat
-INC_DIRS := $(APP_DIR) $(MCU_INC) $(UTIL_INC) $(DEV_INC) $(BSP)
+INC_DIRS := $(APP_DIR) $(MCU_INC) $(UTIL_INC) $(SENSOR_INC) $(BSP)
 
 # Build outputs
 OBJ_DIR  := Objects
@@ -108,10 +124,18 @@ LINKER   := $(BSP)/bp_linker.ld
 C_SRCS   := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.c))
 ASM_SRCS := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.s))
 
+# The selected application gets its own object name, based on its file name.
+# Switching APP therefore creates a new object, and make rebuilds it.
+APP_OBJ  := $(OBJ_DIR)/app_$(APP_NAME).o
+
 # Object files go flat into $(OBJ_DIR). notdir strips the folder part
 # Two source files with the same name in different folders will collide.
 OBJS     := $(addprefix $(OBJ_DIR)/,$(notdir $(C_SRCS:.c=.o)) \
-                                    $(notdir $(ASM_SRCS:.s=.o)))
+                                    $(notdir $(ASM_SRCS:.s=.o))) \
+			$(APP_OBJ)
+
+# Names of all .c files in app/, used by list-apps
+APP_LIST := $(basename $(notdir $(wildcard $(APP_DIR)/*.c)))
 
 # vpath tells make where to look for .c and .s files
 # pattern rules below work regardless of which folder a source file is in.
@@ -123,8 +147,10 @@ vpath %.s $(SRC_DIRS)
 # 5. Include paths
 #    Each folder in SRC_DIRS becomes a -I entry
 #    resolves from any folder without a path
+#    The folder of the selected application is added too, so an application
+#    outside app/ can include headers that sit beside it.
 # -----------------------------------------------------------------------------
-INCLUDES := $(addprefix -I,$(INC_DIRS))
+INCLUDES := $(addprefix -I,$(INC_DIRS)) $(addprefix -I,$(dir $(APP_SRC)))
 
 
 # -----------------------------------------------------------------------------
@@ -165,11 +191,12 @@ endif
 # -----------------------------------------------------------------------------
 # 8. Build rules
 # -----------------------------------------------------------------------------
-.PHONY: all load probe openocd gdb clean examine-sections examine-symbols dump
+.PHONY: all load probe openocd gdb clean examine-sections examine-symbols dump list
 
 # Default target: "make" with no arguments builds the firmware.
 all: $(ELF) $(BIN)
 	$(SIZE) $(ELF)
+	@echo Built application: $(APP_SRC)
 
 # Link all object files into the ELF
 $(ELF): $(OBJS) $(LINKER) | $(OBJ_DIR) $(LOG_DIR)
@@ -183,18 +210,26 @@ $(BIN): $(ELF)
 $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) $(DEBUG_FLAG) $< -o $@
 
+# Compile the selected application.
+$(APP_OBJ): $(APP_SRC) | $(OBJ_DIR)
+	$(CC) $(CFLAGS) $< -o $@
+
 # Assemble each .s source (if the BSP has any).
 $(OBJ_DIR)/%.o: %.s | $(OBJ_DIR)
 	$(CC) $(ASFLAGS) $< -o $@
 
 # Create output folders on demand.
-# The | before them in the rules above means "make sure this exists first, but don't rebuild everything if it changes".
 $(OBJ_DIR) $(LOG_DIR):
 	$(call MKDIR,$@)
 
 # Pull in the dependency files written by -MMD. Changing a header now
 # rebuilds the .c files that include it.
 -include $(OBJS:.o=.d)
+
+# Show the application files available in app/.
+list-apps:
+	$(info Available applications in $(APP_DIR)/:)
+	$(foreach f,$(APP_LIST),$(info   $(f)))
 
 
 # -----------------------------------------------------------------------------
