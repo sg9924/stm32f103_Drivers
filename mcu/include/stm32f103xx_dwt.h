@@ -33,7 +33,11 @@ typedef struct
 #define DWT_CYCCNT_RESET()           (DWT->CYCCNT = 0)
 #define DWT_CYCCNT_ENABLE()          SET_BIT(DWT->CTRL, DWT_CCYCENA)
 #define DWT_CYCCNT_DISABLE()         RESET_BIT(DWT->CTRL, DWT_CCYCENA)
+#define DWT_CHECK()                  CHECK_BIT(DWT->CTRL, DWT_CCYCENA)
 
+#define DWT_CYCLES_TO_US(x)          ((uint32_t)(((uint64_t)(x) * 1000000ULL) / RCC_Get_SYSCLK()))
+#define DWT_US_TO_CYCLES(x)          ((uint32_t)(((uint64_t)(x) * RCC_Get_SYSCLK()) / 1000000ULL))
+#define DWT_MS_TO_CYCLES(x)          ((uint32_t)(((uint64_t)(x) * RCC_Get_SYSCLK()) / 1000ULL))
 
 
 //APIs
