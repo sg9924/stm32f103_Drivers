@@ -7,7 +7,7 @@
 uint8_t nvic_irq_gpio_port_map(GPIO_Handle* pGPIOHandle)
 {
     if(pGPIOHandle->GPIOx_PinConfig.PinNo<=4)
-        return (pGPIOHandle->GPIOx_PinConfig.PinNo+6);
+        return (pGPIOHandle->GPIOx_PinConfig.PinNo + 6);
     else if(pGPIOHandle->GPIOx_PinConfig.PinNo>4 && pGPIOHandle->GPIOx_PinConfig.PinNo<=9)
         return 23;
     else if(pGPIOHandle->GPIOx_PinConfig.PinNo>9 && pGPIOHandle->GPIOx_PinConfig.PinNo<=15)

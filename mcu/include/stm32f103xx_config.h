@@ -3,13 +3,13 @@
 
 
 #define ENABLE_SYSTICK_HANDLER_DEFAULT                      0
-#define ENABLE_SYSTICK_DELAY                                1
+#define ENABLE_SYSTICK_DELAY                                0
 #define ENABLE_SYSTICK_IRQ                                  0
 
 //Board Init
 #define BOARD_INIT_SERIAL                                   1
 #define BOARD_INIT_LED                                      1
-#define BOARD_INIT_SYSTICK                                  1
+#define BOARD_INIT_SYSTICK                                  0
 #define BOARD_INIT_TIM2                                     1
 
 #define BOARD_INIT_DISPLAY_CPU_INFO                         1
